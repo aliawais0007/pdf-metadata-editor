@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+.venv/
+env/
+venv/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS
+.DS_Store
+# PyInstaller
+dist/
+build/
+*.spec
+
+# Virtualenv
+.venv/
+
+# Editor configs
+.vscode/
+*.sublime-workspace
+
+# Settings file
+settings.json
+
+# App Logs
+app.log

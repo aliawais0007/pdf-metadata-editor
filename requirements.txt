@@ -1,0 +1,6 @@
+PyQt6>=6.2
+pypdf>=3.0
+appdirs>=1.4
+cairosvg>=2.0
+Pillow>=8.0
+pyinstaller>=5.0

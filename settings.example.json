@@ -1,0 +1,14 @@
+{
+  "defaults": {
+    "Title": "",
+    "Author": "",
+    "Subject": "",
+    "Keywords": "",
+    "Creator": "",
+    "Producer": "",
+    "CreationDate": "",
+    "ModDate": "",
+    "Trapped": ""
+  },
+  "output_dir": ""
+}
