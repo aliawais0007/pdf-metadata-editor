@@ -112,6 +112,8 @@ class MainWindow(QMainWindow):
             pix.fill(QtGui.QColor("#2b7a78"))
             self.setWindowIcon(QtGui.QIcon(pix))
         self.settings = load_settings()
+        # store the last-loaded original metadata for the selected file
+        self._original_meta = {}
         # reduce Cocoa layout warnings by constraining button heights
         try:
             QApplication.instance().setStyleSheet('''
@@ -338,6 +340,8 @@ class MainWindow(QMainWindow):
             try:
                 # normalize keys (strip leading slash) for readability
                 normalized = { (kk[1:] if kk.startswith('/') else kk): vv for kk, vv in info.items() }
+                # store the original metadata so _update_raw_meta can show both original and current
+                self._original_meta = normalized
                 self.raw_meta.setPlainText(json.dumps(normalized, indent=2, ensure_ascii=False))
             except Exception:
                 # fallback to simple string representation
@@ -392,9 +396,11 @@ class MainWindow(QMainWindow):
         if not items:
             QMessageBox.information(self, "No selection", "Please select a file first")
             return
-        path = items[0].text()
-        self._write_metadata(path, open_folder=True, reload_ui=True)
-        QMessageBox.information(self, "Saved", "Metadata saved")
+        # use the stored full path (UserRole) rather than the displayed name
+        path = items[0].data(QtCore.Qt.ItemDataRole.UserRole) or items[0].toolTip() or items[0].text()
+        ok = self._write_metadata(path, open_folder=True, reload_ui=True)
+        if ok:
+            QMessageBox.information(self, "Saved", "Metadata saved")
 
     def process_all(self):
         count = self.file_list.count()
@@ -404,23 +410,37 @@ class MainWindow(QMainWindow):
         # confirm bulk operation
         if QMessageBox.question(self, "Confirm", f"Process {count} files?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
             return
+        success_count = 0
+        fail_count = 0
+        # For batch processing we apply configured defaults only (do not reuse current editor values)
         for i in range(count):
             item = self.file_list.item(i)
             path = item.data(QtCore.Qt.ItemDataRole.UserRole) or item.toolTip()
             if not os.path.isfile(path) or not path.lower().endswith('.pdf'):
                 continue
-            self._write_metadata(path, apply_defaults=True)
-        # after batch processing, open the dated output folder once
-        base_out = self.settings.get("output_dir") or os.path.dirname(self.file_list.item(0).data(QtCore.Qt.ItemDataRole.UserRole) or self.file_list.item(0).toolTip())
-        date_str = QtCore.QDate.currentDate().toString("yyyy-MM-dd")
-        out_dir = os.path.join(base_out, date_str)
-        try:
-            subprocess.run(["open", out_dir])
-        except Exception:
-            pass
-        QMessageBox.information(self, "Done", "Processed all files")
+            ok = self._write_metadata(path, apply_defaults_only=True)
+            if ok:
+                success_count += 1
+            else:
+                fail_count += 1
 
-    def _write_metadata(self, path, apply_defaults=False, open_folder: bool = False, reload_ui: bool = False):
+        # after batch processing, open the dated output folder if any files succeeded
+        if success_count > 0:
+            base_out = self.settings.get("output_dir") or os.path.dirname(self.file_list.item(0).data(QtCore.Qt.ItemDataRole.UserRole) or self.file_list.item(0).toolTip())
+            date_str = QtCore.QDate.currentDate().toString("yyyy-MM-dd")
+            out_dir = os.path.join(base_out, date_str)
+            try:
+                subprocess.run(["open", out_dir])
+            except Exception:
+                pass
+
+        # report results
+        if fail_count == 0:
+            QMessageBox.information(self, "Done", f"Processed {success_count} files")
+        else:
+            QMessageBox.information(self, "Done", f"Processed {success_count} files, {fail_count} failures")
+
+    def _write_metadata(self, path, apply_defaults=False, open_folder: bool = False, reload_ui: bool = False, apply_defaults_only: bool = False):
         try:
             # basic validation
             if not os.path.isfile(path):
@@ -433,13 +453,18 @@ class MainWindow(QMainWindow):
                 writer.add_page(p)
 
             meta = {}
+            defaults = self.settings.get("defaults", {})
             for k, widget in self.meta_fields.items():
                 # skip macOS Finder "Where From" when writing PDF metadata
                 if k == "Where From":
                     continue
-                val = widget.text() or ""
-                if apply_defaults and not val:
-                    val = self.settings.get("defaults", {}).get(k, "")
+                if apply_defaults_only:
+                    # batch mode: use configured defaults only
+                    val = defaults.get(k, "")
+                else:
+                    val = widget.text() or ""
+                    if apply_defaults and not val:
+                        val = defaults.get(k, "")
                 meta[f"/{k}"] = val
 
             writer.add_metadata(meta)
@@ -476,8 +501,10 @@ class MainWindow(QMainWindow):
                     self.load_selected_metadata()
                 except Exception:
                     pass
+            return True
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to write PDF: {e}")
+            return False
 
     def open_settings(self):
         dlg = SettingsDialog(self.settings, self)
@@ -531,7 +558,13 @@ class MainWindow(QMainWindow):
                 val = widget.text()
                 if val:
                     current[k] = val
-            self.raw_meta.setPlainText(json.dumps(current, indent=2, ensure_ascii=False))
+
+            # Present both the original loaded metadata and the current edited values
+            combined = {
+                "original": self._original_meta if isinstance(self._original_meta, dict) else {},
+                "current": current,
+            }
+            self.raw_meta.setPlainText(json.dumps(combined, indent=2, ensure_ascii=False))
         except Exception:
             # fallback: do nothing
             pass
