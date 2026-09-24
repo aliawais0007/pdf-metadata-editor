@@ -1,6 +1,8 @@
-PDF Metadata Editor
+**PDF Metadata Editor**
 
-Simple local GUI app to view and update PDF metadata.
+A simple, local GUI app to quickly view and update PDF metadata on your machine.
+
+![App Screenshot](assets/app_gui.png)
 
 Quick start
 
@@ -141,5 +143,36 @@ pyinstaller --noconfirm --windowed --onedir --icon=assets/icon.icns main.py
 	- The built app does not require setting `QT_QPA_PLATFORM_PLUGIN_PATH` at runtime — PyInstaller bundles Qt plugins.
 	- Ensure `assets/icon.icns` existed at build time to get a correct Dock icon.
 	- If `open` appears to do nothing, run the bundle binary from Terminal to capture logs.
+
+Contributing
+------------
+
+This project follows a typical open-source workflow. Please use the following steps to propose changes via pull requests:
+
+1. Fork the repository to your account.
+2. Create a feature branch from `main`:
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+3. Make your changes, run tests (if any), and ensure the app still runs locally.
+4. Commit with a clear message and push your branch to your fork.
+5. Open a Pull Request against `aliawais0007/pdf-meta-editor:main` describing the change and any testing steps.
+
+Pull Request Guidelines
+-----------------------
+- Keep changes focused and small. One feature or fix per PR.
+- Include screenshots for UI changes.
+- Add tests or manual verification steps where applicable.
+- Rebase or merge the latest `main` before requesting review to avoid merge conflicts.
+
+Maintainer Workflow (how updates are merged)
+-------------------------------------------
+- Reviewers will review the PR and request changes if needed.
+- Once approved, the maintainer will merge the PR (merge commit, squash, or rebase depending on project preference).
+- For breaking changes, documentation updates and a changelog entry are required.
+
+Before publishing changes to `main`, I'll show you the updated `README.md` and the screenshot addition so you can confirm. Once you approve, I will commit the README update and push it as a PR-style change (we'll push to `main` or a feature branch per your preference).
 
 
