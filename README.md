@@ -2,8 +2,7 @@
 
 A simple, local GUI app to quickly view and update PDF metadata on your machine.
 
-![App Screenshot](assets/screenshot.png)
-<!-- If the image does not render in your Markdown preview, ensure the file `assets/screenshot.png` exists in the repo. The correct Markdown syntax is: `![App Screenshot](assets/screenshot.png)` -->
+![App Screenshot](assets/app_gui.png)
 
 Quick start
 
