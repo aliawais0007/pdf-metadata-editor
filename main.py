@@ -242,14 +242,12 @@ class MainWindow(QMainWindow):
             if k not in keys and k != "Where From":
                 keys.append(k)
 
-        # add macOS Finder "Where From" (read-only) so users can see origin
+        # add macOS Finder "Where From" so users can view and edit the origin value
         keys.append("Where From")
 
         for key in keys:
             le = QLineEdit()
             le.setMinimumWidth(380)
-            if key == "Where From":
-                le.setReadOnly(True)
             self.meta_fields[key] = le
             self.form.addRow(QLabel(key), le)
 
@@ -260,10 +258,8 @@ class MainWindow(QMainWindow):
         self.form.addRow(QLabel("Raw Metadata"), self.raw_meta)
 
         # Connect field changes to update the raw metadata view
-        for k, widget in self.meta_fields.items():
-            # Only track editable fields (exclude Where From)
-            if k != "Where From":
-                widget.textChanged.connect(self._update_raw_meta)
+        for widget in self.meta_fields.values():
+            widget.textChanged.connect(self._update_raw_meta)
 
         override_btn = QPushButton("Override with Defaults")
         override_btn.clicked.connect(self.override_defaults)
@@ -332,7 +328,8 @@ class MainWindow(QMainWindow):
             # populate known fields
             for k, widget in self.meta_fields.items():
                 if k == "Where From":
-                    widget.setText(self._get_where_from(path))
+                    # Prefer saved PDF metadata, falling back to Finder origin.
+                    widget.setText(info.get("/Where From", self._get_where_from(path)))
                 else:
                     widget.setText(info.get(f"/{k}", ""))
 
@@ -385,8 +382,6 @@ class MainWindow(QMainWindow):
     def override_defaults(self):
         defaults = self.settings.get("defaults", {})
         for k, widget in self.meta_fields.items():
-            if k == "Where From":
-                continue
             # Only override fields that are present in stored defaults
             if k in defaults:
                 widget.setText(defaults.get(k, ""))
@@ -455,9 +450,6 @@ class MainWindow(QMainWindow):
             meta = {}
             defaults = self.settings.get("defaults", {})
             for k, widget in self.meta_fields.items():
-                # skip macOS Finder "Where From" when writing PDF metadata
-                if k == "Where From":
-                    continue
                 if apply_defaults_only:
                     # batch mode: use configured defaults only
                     val = defaults.get(k, "")
@@ -517,8 +509,6 @@ class MainWindow(QMainWindow):
     def save_current_as_defaults(self):
         # Take current meta field values and save into settings as defaults
         for k, widget in self.meta_fields.items():
-            if k == "Where From":
-                continue
             self.settings.setdefault("defaults", {})[k] = widget.text()
         save_settings(self.settings)
         QMessageBox.information(self, "Saved", "Current values saved as defaults")
@@ -553,8 +543,6 @@ class MainWindow(QMainWindow):
         try:
             current = {}
             for k, widget in self.meta_fields.items():
-                if k == "Where From":
-                    continue
                 val = widget.text()
                 if val:
                     current[k] = val
